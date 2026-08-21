@@ -1,0 +1,27 @@
+<svg width="540" height="120" viewBox="0 0 540 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="6" y="14" width="92" height="92" rx="24" fill="url(#paint0_linear_2_3)"/>
+  <rect x="22" y="30" width="60" height="60" rx="16" fill="#F8FBFF"/>
+  <path d="M52 18V30" stroke="#FF9A1F" stroke-width="6" stroke-linecap="round"/>
+  <path d="M52 90V102" stroke="#FF9A1F" stroke-width="6" stroke-linecap="round"/>
+  <path d="M18 60H30" stroke="#FF9A1F" stroke-width="6" stroke-linecap="round"/>
+  <path d="M74 60H86" stroke="#FF9A1F" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="52" cy="60" r="15" fill="#071A3A"/>
+  <circle cx="52" cy="60" r="7" fill="#FF9A1F"/>
+  <path d="M52 53V37" stroke="#FF9A1F" stroke-width="5" stroke-linecap="round"/>
+  <path d="M57 60H73" stroke="#FF9A1F" stroke-width="5" stroke-linecap="round"/>
+  <path d="M128 68.4V41.3H139.4V68.4H128Z" fill="white"/>
+  <path d="M147.5 68.4V41.3H158.9V58.4H178.2V68.4H147.5Z" fill="white"/>
+  <path d="M183.2 68.4L196.8 41.3H208L221.6 68.4H209.1L207.2 64.1H197.4L195.6 68.4H183.2ZM200.7 56.2H204L202.4 52.2L200.7 56.2Z" fill="white"/>
+  <path d="M224.6 68.4V41.3H235.3L246.3 54.8V41.3H257.5V68.4H246.8L235.8 54.9V68.4H224.6Z" fill="white"/>
+  <path d="M266 68.4V41.3H282C288.6 41.3 293.6 42.4 296.9 44.7C300.2 47 301.9 50.5 301.9 55.1C301.9 59.6 300.2 63 296.9 65.2C293.6 67.3 288.6 68.4 282 68.4H266ZM277.4 58.8H281.2C283.5 58.8 285.3 58.5 286.4 57.9C287.5 57.3 288 56.3 288 55C288 53.7 287.5 52.7 286.4 52.1C285.3 51.5 283.5 51.2 281.2 51.2H277.4V58.8Z" fill="white"/>
+  <path d="M307.3 68.4V41.3H318.7V68.4H307.3Z" fill="white"/>
+  <path d="M330.2 68.4V50.9H319.5V41.3H352.2V50.9H341.6V68.4H330.2Z" fill="white"/>
+  <path d="M354.8 68.4L366.7 54.7L355.7 41.3H369L373.9 47.7L378.8 41.3H392.1L381.1 54.7L393 68.4H379.2L373.9 61.4L368.6 68.4H354.8Z" fill="white"/>
+  <text x="127" y="93" fill="rgba(255,255,255,0.72)" font-family="Segoe UI, Arial, sans-serif" font-size="19" font-weight="600" letter-spacing="0.6">IoT Testing Dashboard</text>
+  <defs>
+    <linearGradient id="paint0_linear_2_3" x1="6" y1="14" x2="98" y2="106" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#153B7A"/>
+      <stop offset="1" stop-color="#0A2755"/>
+    </linearGradient>
+  </defs>
+</svg>
