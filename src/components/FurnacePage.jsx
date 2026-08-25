@@ -45,6 +45,16 @@ export function FurnacePage({ deviceId, onBack }) {
   const [error, setError]               = useState("");
   const mountedRef                      = useRef(true);
 
+  // ── Historical S3 lookup ──────────────────────────────────────────────────
+  const [histDate, setHistDate]           = useState(() => new Date().toISOString().slice(0, 10));
+  const [histStartTime, setHistStartTime] = useState("00:00");
+  const [histEndTime, setHistEndTime]     = useState("23:59");
+  const [histLoading, setHistLoading]     = useState(false);
+  const [histRecords, setHistRecords]     = useState(null); // null = not yet queried
+  const [histTotal, setHistTotal]         = useState(0);   // total S3 records for the date
+  const [histError, setHistError]         = useState("");
+  const [availDates, setAvailDates]       = useState([]);
+
   useEffect(() => {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
@@ -91,6 +101,58 @@ export function FurnacePage({ deviceId, onBack }) {
   }, [deviceId]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Fetch available dates so the user can pick from known data
+  useEffect(() => {
+    api.getS3DeviceDates(deviceId)
+      .then((r) => { if (mountedRef.current) setAvailDates(r.dates || []); })
+      .catch(() => {});
+  }, [deviceId]);
+
+  const loadHistoricalData = useCallback(async () => {
+    if (!histDate) return;
+    setHistLoading(true);
+    setHistError("");
+    setHistRecords(null);
+    setHistTotal(0);
+    try {
+      const result = await api.getS3DeviceHistory(deviceId, histDate);
+      if (!mountedRef.current) return;
+
+      const all = result.records || [];
+      setHistTotal(all.length);
+
+      // Filter by time range in the BROWSER's local timezone (avoids server TZ mismatch).
+      const filtered = all.filter((r) => {
+        const d = new Date(r.timestamp || r.receivedAt);
+        const hh = d.getHours().toString().padStart(2, "0");
+        const mm = d.getMinutes().toString().padStart(2, "0");
+        const t = `${hh}:${mm}`;
+        if (histStartTime && t < histStartTime) return false;
+        if (histEndTime   && t > histEndTime)   return false;
+        return true;
+      });
+
+      setHistRecords(filtered);
+    } catch (err) {
+      if (mountedRef.current) setHistError(err.message);
+    } finally {
+      if (mountedRef.current) setHistLoading(false);
+    }
+  }, [deviceId, histDate, histStartTime, histEndTime]);
+
+  const histColumns = useMemo(() => {
+    if (!histRecords?.length) return [];
+    const keys = new Set();
+    histRecords.forEach((r) => {
+      Object.keys(r.parsedMetrics || {}).forEach((k) => {
+        if (!HISTORY_HIDDEN.has(k)) keys.add(k);
+      });
+    });
+    const ordered = COLUMN_ORDER.filter((k) => keys.has(k));
+    keys.forEach((k) => { if (!ordered.includes(k)) ordered.push(k); });
+    return ordered;
+  }, [histRecords]);
 
   // Most recent LIVE record → powers Latest Metrics panel
   const latestLiveRecord = useMemo(() => {
@@ -342,6 +404,145 @@ export function FurnacePage({ deviceId, onBack }) {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              )}
+            </div>
+          </section>
+          {/* Historical S3 Data Lookup */}
+          <section className="panel">
+            <div className="panel-header open">
+              <div className="panel-header-left">
+                <div className="panel-icon blue">CAL</div>
+                <h2>Historical Data Lookup</h2>
+                <span className="panel-badge">S3 · 2-min intervals</span>
+              </div>
+            </div>
+            <div className="panel-body">
+              {/* Filter row */}
+              <div className="hist-filter-row">
+                <div className="hist-filter-group">
+                  <label className="hist-filter-label">Date</label>
+                  <input
+                    type="date"
+                    className="hist-filter-input"
+                    value={histDate}
+                    max={new Date().toISOString().slice(0, 10)}
+                    onChange={(e) => setHistDate(e.target.value)}
+                  />
+                </div>
+                <div className="hist-filter-group">
+                  <label className="hist-filter-label">From</label>
+                  <input
+                    type="time"
+                    className="hist-filter-input"
+                    value={histStartTime}
+                    onChange={(e) => setHistStartTime(e.target.value)}
+                  />
+                </div>
+                <div className="hist-filter-group">
+                  <label className="hist-filter-label">To</label>
+                  <input
+                    type="time"
+                    className="hist-filter-input"
+                    value={histEndTime}
+                    onChange={(e) => setHistEndTime(e.target.value)}
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline"
+                  onClick={loadHistoricalData}
+                  disabled={histLoading || !histDate}
+                  style={{ alignSelf: "flex-end" }}
+                >
+                  {histLoading ? "Loading…" : "Load Data"}
+                </button>
+              </div>
+
+              {/* Quick-pick date chips from S3 */}
+              {availDates.length > 0 && (
+                <div className="hist-available-dates">
+                  <span className="hist-dates-label">Available: </span>
+                  {availDates.slice(0, 12).map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      className={`hist-date-chip${histDate === d ? " active" : ""}`}
+                      onClick={() => setHistDate(d)}
+                    >
+                      {d}
+                    </button>
+                  ))}
+                  {availDates.length > 12 && (
+                    <span className="hist-dates-more">+{availDates.length - 12} more</span>
+                  )}
+                </div>
+              )}
+
+              {histError && (
+                <div className="error-banner" style={{ marginTop: 12 }}>{histError}</div>
+              )}
+
+              {histLoading && (
+                <div className="furnace-loading" style={{ marginTop: 24 }}>
+                  <div className="furnace-loading-spinner" />
+                  Fetching S3 data for {histDate}…
+                </div>
+              )}
+
+              {!histLoading && histRecords !== null && histRecords.length === 0 && (
+                <div className="empty-state" style={{ marginTop: 24 }}>
+                  {histTotal === 0
+                    ? <p>No S3 data found for <strong>{histDate}</strong> on this furnace. Check that the date has uploaded files.</p>
+                    : <p><strong>{histTotal}</strong> records found for {histDate}, but none fall in the <strong>{histStartTime} – {histEndTime}</strong> window. Try widening the time range.</p>
+                  }
+                </div>
+              )}
+
+              {!histLoading && histRecords !== null && histRecords.length > 0 && (
+                <>
+                  <div className="hist-result-meta" style={{ marginTop: 14, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <span className="panel-badge">{histRecords.length} records shown</span>
+                    {histTotal !== histRecords.length && (
+                      <span className="panel-badge">{histTotal} total on {histDate}</span>
+                    )}
+                    <span className="panel-badge">{histStartTime} – {histEndTime}</span>
+                  </div>
+                  <div className="table-wrap log-table" style={{ marginTop: 12 }}>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th className="col-time">Time</th>
+                          {histColumns.map((col) => (
+                            <th key={col}>{metricLabel(col)}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {histRecords.map((record) => (
+                          <tr key={record.id} className="log-row log-src-s3">
+                            <td className="col-time nowrap mono-small">
+                              {new Date(record.timestamp || record.receivedAt).toLocaleString()}
+                            </td>
+                            {histColumns.map((col) => {
+                              const raw = record.parsedMetrics?.[col];
+                              return (
+                                <td key={col} className={raw === undefined ? "log-empty" : ""}>
+                                  {raw !== undefined ? formatMetricValue(col, raw) : "—"}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+
+              {histRecords === null && !histLoading && (
+                <div className="empty-state" style={{ marginTop: 24 }}>
+                  <p>Pick a date and time range, then click <strong>Load Data</strong> to pull records from S3.</p>
                 </div>
               )}
             </div>

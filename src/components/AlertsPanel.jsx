@@ -44,10 +44,11 @@ export function AlertsPanel({ activeAlerts = [], recentAlerts = [], devices = []
   const [config, setConfig] = useState(null);
   const [assetLimits, setAssetLimits] = useState({});
   const [limitsDraft, setLimitsDraft] = useState({});
-  const [subs, setSubs] = useState({ emails: [], whatsapp: [] });
+  const [subs, setSubs] = useState({ emails: [], whatsapp: [], sms: [] });
   const [notifierStatus, setNotifierStatus] = useState(null);
   const [email, setEmail] = useState("");
   const [number, setNumber] = useState("");
+  const [smsNumber, setSmsNumber] = useState("");
   const [draft, setDraft] = useState(null);
   const [busy, setBusy] = useState(false);
   const [limitsBusy, setLimitsBusy] = useState(false);
@@ -62,7 +63,7 @@ export function AlertsPanel({ activeAlerts = [], recentAlerts = [], devices = []
       setDraft(cfg.config);
       setAssetLimits(cfg.assetLimits || {});
       setLimitsDraft(cfg.assetLimits || {});
-      setSubs(sub.subscribers || { emails: [], whatsapp: [] });
+      setSubs(sub.subscribers || { emails: [], whatsapp: [], sms: [] });
       setNotifierStatus(sub.status || null);
       setError("");
     } catch (err) {
@@ -164,6 +165,24 @@ export function AlertsPanel({ activeAlerts = [], recentAlerts = [], devices = []
   const removeWhatsapp = async (n) => {
     try {
       const r = await api.removeWhatsappSubscriber(n);
+      setSubs(r.subscribers);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+  const addSms = async () => {
+    if (!smsNumber) return;
+    try {
+      const r = await api.addSmsSubscriber(smsNumber);
+      setSubs(r.subscribers);
+      setSmsNumber("");
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+  const removeSms = async (n) => {
+    try {
+      const r = await api.removeSmsSubscriber(n);
       setSubs(r.subscribers);
     } catch (err) {
       setError(err.message);
@@ -395,14 +414,23 @@ export function AlertsPanel({ activeAlerts = [], recentAlerts = [], devices = []
 
         {tab === "subs" ? (
           <div className="stack">
+            {/* ── Email ── */}
             <div>
-              <h3 className="section-h">Email recipients</h3>
+              <h3 className="section-h">
+                Email recipients
+                {notifierStatus?.email?.enabled ? (
+                  <span className="channel-badge channel-on">on</span>
+                ) : (
+                  <span className="channel-badge channel-off">off</span>
+                )}
+              </h3>
               <div className="row-input">
                 <input
                   type="email"
                   placeholder="ops@plantiqx.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addEmail()}
                 />
                 <button className="btn btn-sm" onClick={addEmail}>
                   Add
@@ -421,14 +449,61 @@ export function AlertsPanel({ activeAlerts = [], recentAlerts = [], devices = []
               </ul>
             </div>
 
+            {/* ── SMS ── */}
             <div>
-              <h3 className="section-h">WhatsApp recipients</h3>
+              <h3 className="section-h">
+                SMS recipients
+                {notifierStatus?.sms?.enabled ? (
+                  <span className="channel-badge channel-on">on · {notifierStatus.sms.provider}</span>
+                ) : (
+                  <span className="channel-badge channel-off">off</span>
+                )}
+              </h3>
+              <p className="muted small">
+                Include country code — e.g. <code>919876543210</code> for India (+91).
+              </p>
+              <div className="row-input">
+                <input
+                  type="tel"
+                  placeholder="919876543210"
+                  value={smsNumber}
+                  onChange={(e) => setSmsNumber(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addSms()}
+                />
+                <button className="btn btn-sm" onClick={addSms}>
+                  Add
+                </button>
+              </div>
+              <ul className="chip-list">
+                {(subs.sms || []).map((n) => (
+                  <li key={n} className="chip">
+                    {n}
+                    <button onClick={() => removeSms(n)} aria-label="remove">
+                      ×
+                    </button>
+                  </li>
+                ))}
+                {(subs.sms || []).length === 0 ? <p className="muted">No SMS recipients.</p> : null}
+              </ul>
+            </div>
+
+            {/* ── WhatsApp ── */}
+            <div>
+              <h3 className="section-h">
+                WhatsApp recipients
+                {notifierStatus?.whatsapp?.enabled ? (
+                  <span className="channel-badge channel-on">on · {notifierStatus.whatsapp.provider}</span>
+                ) : (
+                  <span className="channel-badge channel-off">off</span>
+                )}
+              </h3>
               <div className="row-input">
                 <input
                   type="tel"
                   placeholder="+919876543210"
                   value={number}
                   onChange={(e) => setNumber(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addWhatsapp()}
                 />
                 <button className="btn btn-sm" onClick={addWhatsapp}>
                   Add
@@ -449,15 +524,13 @@ export function AlertsPanel({ activeAlerts = [], recentAlerts = [], devices = []
               </ul>
             </div>
 
+            {/* ── Channel status summary ── */}
             {notifierStatus ? (
-              <div className="muted small">
-                Email channel: <strong>{notifierStatus.email?.enabled ? "enabled" : "disabled"}</strong>
-                {" · "}
-                WhatsApp channel:{" "}
-                <strong>{notifierStatus.whatsapp?.enabled ? "enabled" : "disabled"}</strong>
-                {!notifierStatus.email?.nodemailerAvailable ? (
-                  <span> · Install nodemailer to enable email.</span>
-                ) : null}
+              <div className="muted small" style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
+                <strong>Channel status:</strong>{" "}
+                Email {notifierStatus.email?.configured ? "✓ configured" : "✗ not configured"} ·{" "}
+                SMS {notifierStatus.sms?.configured ? "✓ configured" : "✗ not configured"} ·{" "}
+                WhatsApp {notifierStatus.whatsapp?.configured ? "✓ configured" : "✗ not configured"}
               </div>
             ) : null}
           </div>
@@ -466,18 +539,21 @@ export function AlertsPanel({ activeAlerts = [], recentAlerts = [], devices = []
         {tab === "test" ? (
           <div className="stack">
             <p className="muted">
-              Send a sample alert to current recipients. Configured channels must be enabled in the
-              backend .env to actually deliver.
+              Send a sample alert to current recipients. A channel must be enabled and configured in
+              the backend .env to actually deliver.
             </p>
             <div className="row-actions">
               <button className="btn" disabled={testing} onClick={() => sendTest("email")}>
                 Test Email
               </button>
+              <button className="btn" disabled={testing} onClick={() => sendTest("sms")}>
+                Test SMS
+              </button>
               <button className="btn" disabled={testing} onClick={() => sendTest("whatsapp")}>
                 Test WhatsApp
               </button>
-              <button className="btn" disabled={testing} onClick={() => sendTest("all")}>
-                Test Both
+              <button className="btn btn-outline" disabled={testing} onClick={() => sendTest("all")}>
+                Test All
               </button>
             </div>
             {testResult ? (
@@ -646,11 +722,13 @@ function AlertsTab({ activeAlerts, recentAlerts, devices, clearing, onClear }) {
           </h3>
         </div>
         {todayList.length === 0 ? (
-          <p className="muted alerts-empty-line">No alerts today.</p>
+          <div className="alerts-empty">
+            <p>No alerts today{hasFilters ? " matching filters" : ""}.</p>
+          </div>
         ) : (
           <div className="alert-list">
             {todayList.map((a) => (
-              <AlertRow key={a.id} alert={a} />
+              <AlertRow key={a.id || `${a.deviceId}-${a.kind}-${a.clearedAt}`} alert={a} />
             ))}
           </div>
         )}
@@ -666,7 +744,7 @@ function AlertsTab({ activeAlerts, recentAlerts, devices, clearing, onClear }) {
           </div>
           <div className="alert-list">
             {earlierList.map((a) => (
-              <AlertRow key={a.id} alert={a} />
+              <AlertRow key={a.id || `${a.deviceId}-${a.kind}-${a.clearedAt}`} alert={a} />
             ))}
           </div>
         </section>
@@ -675,145 +753,29 @@ function AlertsTab({ activeAlerts, recentAlerts, devices, clearing, onClear }) {
   );
 }
 
-const DispatchBadge = ({ channel, result }) => {
-  if (!result) {
-    return (
-      <span className="dispatch-badge pending">
-        {channel === "email" ? "✉" : channel === "whatsapp" ? "WA" : channel} pending
-      </span>
-    );
-  }
-  if (result.ok) {
-    return (
-      <span className="dispatch-badge ok">
-        {channel === "email" ? "✉" : channel === "whatsapp" ? "WA" : channel} sent
-      </span>
-    );
-  }
-  if (result.skipped) {
-    return (
-      <span className="dispatch-badge skipped" title={result.skipped}>
-        {channel === "email" ? "✉" : channel === "whatsapp" ? "WA" : channel} skipped
-      </span>
-    );
-  }
-  return (
-    <span className="dispatch-badge fail" title={result.error || ""}>
-      {channel === "email" ? "✉" : channel === "whatsapp" ? "WA" : channel} failed
-    </span>
-  );
-};
-
-function AlertRow({ alert, isActive = false }) {
+function AlertRow({ alert: a, isActive = false }) {
   const [expanded, setExpanded] = useState(false);
-  const ts = alert.timestamp || alert.lastNotifiedAt;
-  const kindLabel = KIND_LABEL[alert.kind] || alert.kind?.toUpperCase();
-  const isRecovery = alert.kind === "recovery";
-
-  if (isRecovery) {
-    return (
-      <div className="alert-row sev-recovery">
-        <span className="alert-row-stripe" aria-hidden />
-        <div className="alert-row-main">
-          <div className="alert-row-head">
-            <strong>
-              Recovered — {alert.previousKind ? KIND_LABEL[alert.previousKind] : ""} ·{" "}
-              {alert.deviceId}
-            </strong>
-            <span className="muted" title={ts ? new Date(ts).toLocaleString() : ""}>
-              {fmtRel(ts)}
-            </span>
-          </div>
-          {alert.message ? <div className="alert-row-msg">{alert.message}</div> : null}
-        </div>
-      </div>
-    );
-  }
-
-  const hasDispatch = Boolean(alert.dispatch);
-
   return (
-    <div className={`alert-row ${sevClass(alert.severity)} ${isActive ? "is-active" : ""}`}>
-      <span className="alert-row-stripe" aria-hidden />
+    <div
+      className={`alert-row ${sevClass(a.severity)} ${isActive ? "alert-active" : ""}`}
+      onClick={() => setExpanded(!expanded)}
+    >
       <div className="alert-row-main">
-        <div className="alert-row-head">
-          <div className="alert-row-title">
-            <span className={`sev-chip sev-chip-${alert.severity || "info"}`}>
-              {(alert.severity || "info").toUpperCase()}
-            </span>
-            <strong>
-              {kindLabel} — {alert.assetTag || alert.deviceId}
-              {alert.assetName ? <span className="muted"> · {alert.assetName}</span> : null}
-            </strong>
-          </div>
-          <span className="muted alert-row-time" title={ts ? new Date(ts).toLocaleString() : ""}>
-            {fmtRel(ts)}
-          </span>
-        </div>
-
-        <div className="alert-row-body">
-          <span>
-            <span className="muted">MV</span> <strong>{fmt(alert.mv)}</strong>
-          </span>
-          {alert.sp !== undefined && alert.sp !== null ? (
-            <span>
-              <span className="muted">SP</span> <strong>{fmt(alert.sp)}</strong>
-            </span>
-          ) : null}
-          {alert.delta !== undefined && alert.delta !== null ? (
-            <span>
-              <span className="muted">Δ</span> <strong>{fmt(alert.delta)}</strong>
-            </span>
-          ) : null}
-          <span>
-            <span className="muted">Sustained</span>{" "}
-            <strong>{alert.sustainedMinutes ?? "—"} min</strong>
-          </span>
-        </div>
-
-        {hasDispatch ? (
-          <div className="alert-row-dispatch">
-            <DispatchBadge channel="email" result={alert.dispatch?.email} />
-            <DispatchBadge channel="whatsapp" result={alert.dispatch?.whatsapp} />
-          </div>
-        ) : null}
-
-        {expanded ? (
-          <div className="alert-row-detail">
-            {alert.message ? <p className="alert-row-msg">{alert.message}</p> : null}
-            <dl className="alert-row-kv">
-              <dt>Asset ID</dt>
-              <dd>{alert.assetId || alert.deviceId}</dd>
-              {alert.location?.org ? (
-                <>
-                  <dt>Plant</dt>
-                  <dd>
-                    {alert.location.org}/{alert.location.plant}
-                  </dd>
-                </>
-              ) : null}
-              <dt>Threshold</dt>
-              <dd>{fmt(alert.threshold ?? alert.thresholdDeg)}</dd>
-              <dt>Detected</dt>
-              <dd>{ts ? new Date(ts).toLocaleString() : "—"}</dd>
-              {alert.id ? (
-                <>
-                  <dt>Alert ID</dt>
-                  <dd className="mono-small">{alert.id}</dd>
-                </>
-              ) : null}
-            </dl>
-          </div>
-        ) : null}
-
-        <button
-          type="button"
-          className="alert-row-toggle"
-          onClick={() => setExpanded((v) => !v)}
-        >
-          {expanded ? "Hide details" : "Show details"}
-        </button>
+        <span className={`sev-dot ${sevClass(a.severity)}`} />
+        <span className="alert-kind">{KIND_LABEL[a.kind] || a.kind}</span>
+        <span className="alert-device">{a.assetTag || a.deviceId}</span>
+        <span className="alert-mv">MV {fmt(a.mv)}</span>
+        {a.sp != null ? <span className="alert-sp">SP {fmt(a.sp)}</span> : null}
+        <span className="alert-time muted">{fmtRel(isActive ? a.lastNotifiedAt : a.clearedAt || a.timestamp)}</span>
       </div>
+      {expanded ? (
+        <div className="alert-row-detail">
+          <span>Dev: {fmt(a.delta)}</span>
+          <span>Sustained: {a.sustainedMinutes ?? "—"} min</span>
+          {a.assetName ? <span>{a.assetName}</span> : null}
+          <span className="muted">{a.timestamp}</span>
+        </div>
+      ) : null}
     </div>
   );
 }

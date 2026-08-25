@@ -4,11 +4,13 @@ const sevColor = (s) =>
   s === "critical" ? "#dc2626" : s === "warning" ? "#d69b14" : "#5925DC";
 
 const KIND_LABEL = {
-  overheat: "Overheat",
-  undercool: "Undercool",
+  overheat:   "Overheat",
+  undercool:  "Undercool",
   high_limit: "High limit",
-  low_limit: "Low limit",
-  recovery: "Recovered"
+  low_limit:  "Low limit",
+  sp_cross:   "MV crossed SP",
+  buzzer:     "Buzzer alarm",
+  recovery:   "Recovered"
 };
 
 const fmtRel = (iso) => {

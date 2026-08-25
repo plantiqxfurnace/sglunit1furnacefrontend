@@ -37,6 +37,8 @@ export const api = {
   discoverLatestS3PerDevice: () => request("/api/s3/discover/latest"),
   loadS3DeviceHistory: (deviceId, limit = 100) =>
     request(`/api/s3/device/${encodeURIComponent(deviceId)}/load-recent?limit=${limit}`),
+  getS3DeviceHistory: (deviceId, date) =>
+    request(`/api/s3/device/${encodeURIComponent(deviceId)}/history?date=${encodeURIComponent(date)}`),
 
   // Cycles
   getCyclesDaily: (month) =>
@@ -51,16 +53,29 @@ export const api = {
   updateAssetLimits: (patch) =>
     request("/api/alerts/asset-limits", { method: "PUT", body: JSON.stringify(patch) }),
   getAlertSubscribers: () => request("/api/alerts/subscribers"),
+
+  // Email subscribers
   addEmailSubscriber: (email) =>
     request("/api/alerts/subscribers/email", { method: "POST", body: JSON.stringify({ email }) }),
   removeEmailSubscriber: (email) =>
     request(`/api/alerts/subscribers/email?email=${encodeURIComponent(email)}`, { method: "DELETE" }),
+
+  // WhatsApp subscribers
   addWhatsappSubscriber: (number) =>
     request("/api/alerts/subscribers/whatsapp", { method: "POST", body: JSON.stringify({ number }) }),
   removeWhatsappSubscriber: (number) =>
     request(`/api/alerts/subscribers/whatsapp?number=${encodeURIComponent(number)}`, {
       method: "DELETE"
     }),
+
+  // SMS subscribers
+  addSmsSubscriber: (number) =>
+    request("/api/alerts/subscribers/sms", { method: "POST", body: JSON.stringify({ number }) }),
+  removeSmsSubscriber: (number) =>
+    request(`/api/alerts/subscribers/sms?number=${encodeURIComponent(number)}`, {
+      method: "DELETE"
+    }),
+
   sendAlertTest: (channel = "all") =>
     request("/api/alerts/test", { method: "POST", body: JSON.stringify({ channel }) }),
   clearAlertHistory: (keepActive = false) =>

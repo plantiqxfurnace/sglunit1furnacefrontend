@@ -6,10 +6,12 @@ const sevColor = (s) =>
   s === "critical" ? "#dc2626" : s === "warning" ? "#d69b14" : "#5925DC";
 
 const KIND_LABEL = {
-  overheat: "Overheat triggered",
-  undercool: "Undercool triggered",
+  overheat:   "Overheat triggered",
+  undercool:  "Undercool triggered",
   high_limit: "High-limit breach",
-  low_limit: "Low-limit breach"
+  low_limit:  "Low-limit breach",
+  sp_cross:   "MV crossed setpoint",
+  buzzer:     "Buzzer alarm"
 };
 
 const fmtDeg = (n) =>
